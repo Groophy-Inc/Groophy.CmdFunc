@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 
 namespace Groophy.CmdFunc
@@ -36,47 +36,65 @@ namespace Groophy.CmdFunc
 
         private void Shell_ErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            back += "\n" + e.Data;
+            if (endflag)
+            {
+                data += e.Data + "\n";
+            }
         }
 
         private void Shell_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            if (nn)
+            if (e.Data == input)
             {
-                nn = false;
+                return;
             }
-            else
+            try
             {
-                if (start)
+                if (e.Data.Split(new[] { "@echo " }, StringSplitOptions.None)[1] == "End-Flag-ID-Null")
                 {
-                    if (e.Data.Length > 21)
-                    {
-                        if (e.Data == "End-Flag-ID-Null" || e.Data.Substring(e.Data.Length - 21, 21) == "echo End-Flag-ID-Null") start = false;
-                        else back += "\n" + e.Data;
-                    }
-                    else
-                    {
-                        if (e.Data == "End-Flag-ID-Null") start = false;
-                        else back += "\n" + e.Data;
-                    }
+                    endflag = false;
+                    return;
                 }
+            }
+            catch { }
+            try
+            {
+                if (e.Data.Substring(0, 16) == "End-Flag-ID-Null")
+                {
+                    return;
+                }
+            }
+            catch { }
+
+            if (endflag)
+            {
+                data += e.Data + "\n";
             }
         }
 
-        bool nn = true;
-        string back = string.Empty;
-        bool start = false;
+        bool endflag = false;
+        string data = string.Empty;
+        string input = string.Empty;
         public string Input(string command)
         {
-            nn = true;
-            start = true;
+            input = command;
+            data = string.Empty;
+            endflag = true;
             Shell.StandardInput.WriteLine(command);
-            Shell.StandardInput.WriteLine("echo End-Flag-ID-Null");
-            while (start) { }
-            string a = back;
-            back = string.Empty;
-            nn = true;
-            return a;
+            Shell.StandardInput.WriteLine("@echo End-Flag-ID-Null");
+            while (endflag) { }
+
+            string[] lines = data.Split(new[] { "\r", "\n", "\r\n" }, StringSplitOptions.None);
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(lines[i]))
+                {
+                    sb.Append(lines[i] + Environment.NewLine);
+                }
+            }
+            endflag = false;
+            return sb.ToString();
         }
     }
 }
